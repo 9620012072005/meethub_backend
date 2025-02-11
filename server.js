@@ -2,12 +2,13 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
-// const path = require("path");
+const path = require("path");
 const morgan = require("morgan");
 const fs = require("fs");
 const http = require("http");
 const socketIo = require("socket.io");
 const multer = require("multer"); // Multer for file uploads
+
 
 
 const postRoutes = require("./routes/postRoutes"); // Post routes
