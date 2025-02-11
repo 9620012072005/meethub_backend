@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { authenticateUser } = require("../middleware/authenticateuser"); // Import authentication middleware
+const  authenticateUser  = require("../middleware/authenticateuser"); // Import authentication middleware
 const multer = require("multer");
 const path = require("path");
 const {

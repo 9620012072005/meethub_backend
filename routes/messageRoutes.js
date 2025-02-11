@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const authenticateUser = require("../middleware/authenticateuser"); // Moved above
 const mongoose = require('mongoose');
 const Message = require('../models/Message');
 const User = require('../models/User'); // Import the User model to populate sender and receiver details
-const authenticateUser = require("../middleware/authenticateUser"); // ✅ Match exact case
 
 const { sendMessage, getMessages} = require('../controllers/messageController'); // Assuming sendMessage is defined in the controller
 
