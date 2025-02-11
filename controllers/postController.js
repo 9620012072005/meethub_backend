@@ -163,41 +163,6 @@ exports.getPostDetails = async (req, res) => {
 
 
 
-exports.toggleLikePost = async (req, res) => {
-  try {
-    const { postId } = req.params;
-    const userId = req.user.id; // Extract authenticated user ID
-
-    // Use Mongoose to find and update the post in one query
-    const post = await Post.findById(postId);
-    if (!post) {
-      return res.status(404).json({ success: false, message: "Post not found" });
-    }
-
-    const hasLiked = post.likes.includes(userId);
-
-    if (hasLiked) {
-      // Unlike: Remove user ID from the likes array
-      post.likes = post.likes.filter((id) => id.toString() !== userId);
-    } else {
-      // Like: Add user ID to the likes array
-      post.likes.push(userId);
-    }
-
-    // Save the updated post
-    await post.save();
-
-    return res.status(200).json({
-      success: true,
-      message: hasLiked ? "Post unliked" : "Post liked",
-      userHasLiked: !hasLiked,
-      likesCount: post.likes.length,
-    });
-  } catch (error) {
-    console.error("Error toggling like:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
-  }
-};
 
 
 // Update a post
@@ -245,6 +210,41 @@ exports.getComments = async (req, res) => {
       message: "Server error while fetching comments",
       error: error.message,
     });
+  }
+};
+exports.toggleLikePost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user.id; // Extract authenticated user ID
+
+    // Use Mongoose to find and update the post in one query
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post not found" });
+    }
+
+    const hasLiked = post.likes.includes(userId);
+
+    if (hasLiked) {
+      // Unlike: Remove user ID from the likes array
+      post.likes = post.likes.filter((id) => id.toString() !== userId);
+    } else {
+      // Like: Add user ID to the likes array
+      post.likes.push(userId);
+    }
+
+    // Save the updated post
+    await post.save();
+
+    return res.status(200).json({
+      success: true,
+      message: hasLiked ? "Post unliked" : "Post liked",
+      userHasLiked: !hasLiked,
+      likesCount: post.likes.length,
+    });
+  } catch (error) {
+    console.error("Error toggling like:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
