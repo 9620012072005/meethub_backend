@@ -22,8 +22,8 @@ const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: [
-      "http://localhost:3000",
-      "https://meethub-jj576dulm-manikandans-projects-a39fb94e.vercel.app",
+      
+      "https://meethub-mhvdf9tf4-manikandans-projects-a39fb94e.vercel.app",
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
@@ -33,8 +33,8 @@ const io = socketIo(server, {
 
 // ✅ **Fix: Proper CORS Middleware**
 const allowedOrigins = [
-  "http://localhost:3000", 
-  "https://meethub-r46b96gpq-manikandans-projects-a39fb94e.vercel.app"
+  
+  "https://meethub-mhvdf9tf4-manikandans-projects-a39fb94e.vercel.app"
 ];
 app.use(
   cors({
