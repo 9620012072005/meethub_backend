@@ -33,15 +33,14 @@ const io = socketIo(server, {
 
 // ✅ **Fix: Proper CORS Middleware**
 const allowedOrigins = [
-  "http://localhost:3000", // Local development
-  "https://meethub-jj576dulm-manikandans-projects-a39fb94e.vercel.app", // Production frontend
+  "http://localhost:3000", 
+  "https://meethub-r46b96gpq-manikandans-projects-a39fb94e.vercel.app"
 ];
-
 app.use(
   cors({
     origin: allowedOrigins,
     methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true, // Allow cookies/auth headers
+    credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
