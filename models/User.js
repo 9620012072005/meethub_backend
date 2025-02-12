@@ -29,19 +29,9 @@ const UserSchema = new mongoose.Schema(
       default: null,
 
     },
-    about: {
-      type: String,
-      default: ''
-    },
-    personalDetails: {
-      type: String,
-      default: ''
-    },
-    role: {
-      type: String,
-      enum: ["Software Developer", "Web Designer", "Student", "Working Professional"], // Enum validation
-      required: true,
-    },
+    
+    
+    
     image: {
       type: String,
       default: null,
