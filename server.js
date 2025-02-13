@@ -22,7 +22,8 @@ const server = http.createServer(app);
 
 // ✅ **Fix: Proper CORS Configuration**
 const allowedOrigins = [
-  "https://meethub-five.vercel.app"
+  "https://meethub-five.vercel.app",
+  "http://localhost:5000"
 ];
 
 app.use(cors({
