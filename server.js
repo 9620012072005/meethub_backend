@@ -6,47 +6,35 @@ const path = require("path");
 const fs = require("fs");
 const http = require("http");
 const socketIo = require("socket.io");
-const multer = require("multer"); // Multer for file uploads
+const multer = require("multer"); 
 const morgan = require("morgan");
 
-const postRoutes = require("./routes/postRoutes"); // Post routes
+const postRoutes = require("./routes/postRoutes");
 const messageRoutes = require("./routes/messageRoutes");
-const userRoutes = require("./routes/userRoutes"); // Ensure path is correct
+const userRoutes = require("./routes/userRoutes");
 const profileDetailsRoutes = require("./routes/profileDetailsRoutes");
 
-// Load environment variables from .env file
+// Load environment variables
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: [
-      
-      "https://meethub-mhvdf9tf4-manikandans-projects-a39fb94e.vercel.app",
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-  },
-});
 
-// ✅ **Fix: Proper CORS Middleware**
+// ✅ **Fix: Proper CORS Configuration**
 const allowedOrigins = [
-  
+  "https://meethub-my4htv7cc-manikandans-projects-a39fb94e.vercel.app",
   "https://meethub-mhvdf9tf4-manikandans-projects-a39fb94e.vercel.app"
 ];
-app.use(
-  cors({
-    origin: allowedOrigins,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
 
-app.use(express.json()); // Parse incoming JSON requests
-app.use(morgan("dev")); // Log HTTP requests
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
+app.use(express.json()); // ✅ Apply after CORS
+app.use(morgan("dev")); 
 
 // Ensure 'uploads' directory exists
 const uploadDir = path.join(__dirname, "uploads");
@@ -55,22 +43,30 @@ if (!fs.existsSync(uploadDir)) {
   console.log("Uploads directory created");
 }
 
-// Serve static files from 'uploads' directory
+// Serve static files
 app.use("/uploads", express.static(uploadDir));
 
 // API Routes
-app.use("/api/users", userRoutes); // User routes
-app.use("/api/posts", postRoutes); // Post routes
-app.use("/api/messages", messageRoutes); // Chat routes
+app.use("/api/users", userRoutes);
+app.use("/api/posts", postRoutes);
+app.use("/api/messages", messageRoutes);
 app.use("/api/profiledetails", profileDetailsRoutes);
+
+// ✅ **Fix: Correct WebSocket CORS**
+const io = socketIo(server, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+  },
+});
 
 // Multer configuration for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Save files to the 'uploads' folder
+    cb(null, "uploads/");
   },
   filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`); // Create unique filenames
+    cb(null, `${Date.now()}-${file.originalname}`);
   },
 });
 const upload = multer({ storage });
@@ -78,8 +74,8 @@ const upload = multer({ storage });
 // Image upload endpoint
 app.post("/api/upload", upload.single("image"), (req, res) => {
   try {
-    const imagePath = `/uploads/${req.file.filename}`; // Construct image path
-    res.status(201).json({ imagePath }); // Respond with the image URL
+    const imagePath = `/uploads/${req.file.filename}`;
+    res.status(201).json({ imagePath });
   } catch (error) {
     console.error("Error uploading file:", error);
     res.status(500).json({ message: "Failed to upload image" });
@@ -87,30 +83,27 @@ app.post("/api/upload", upload.single("image"), (req, res) => {
 });
 
 // MongoDB Connection
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => {
     console.error("Failed to connect to MongoDB:", err.message);
     process.exit(1);
   });
 
-// Socket.IO Connection Setup
-let users = {}; // To keep track of users and their socket connections
+// Socket.IO Setup
+let users = {};
 
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
 
-  // Handle user joining the chat
   socket.on("join", (userId) => {
     users[userId] = socket.id;
     console.log(`User with ID: ${userId} connected`);
   });
 
-  // Handle sending a message
   socket.on("send_message", ({ receiverId, content }) => {
     const receiverSocket = users[receiverId];
     if (receiverSocket) {
@@ -118,12 +111,11 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle disconnection
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
     for (let userId in users) {
       if (users[userId] === socket.id) {
-        delete users[userId]; // Remove user from the tracking object
+        delete users[userId];
         break;
       }
     }
