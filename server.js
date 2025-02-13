@@ -22,8 +22,7 @@ const server = http.createServer(app);
 
 // ✅ **Fix: Proper CORS Configuration**
 const allowedOrigins = [
-  "https://meethub-my4htv7cc-manikandans-projects-a39fb94e.vercel.app",
-  "https://meethub-mhvdf9tf4-manikandans-projects-a39fb94e.vercel.app"
+  "https://meethub-two.vercel.app"
 ];
 
 app.use(cors({
