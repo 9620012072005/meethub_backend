@@ -15,48 +15,60 @@ const deleteAvatar = (avatarPath) => {
   }
 };
 
-// Register user
 const registerUser = async (req, res) => {
-  const { name, email, password, about, personalDetails, role } = req.body;
-
   try {
+    console.log("📌 Register endpoint hit");
+
+    const { name, email, password, about, personalDetails, role } = req.body;
+    console.log("📌 Received Data:", req.body);
+
     // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
+      console.log("❌ User already exists:", email);
       return res.status(400).json({ error: "User already exists." });
     }
 
     // Validate password complexity
     if (password.length < 6) {
+      console.log("❌ Password too short");
       return res.status(400).json({ error: "Password must be at least 6 characters long." });
     }
 
-    // Handle avatar file upload
-    let avatar = "/uploads/default_avatar.jpg"; // Default avatar
+    // Handle avatar upload (Debugging)
+    let avatar = "https://res.cloudinary.com/your_cloud_name/image/upload/v123456789/default_avatar.png"; // Default avatar
     if (req.file) {
+      console.log("📌 Uploading file to Cloudinary:", req.file.path);
       try {
-        const result = await cloudinary.uploader.upload(req.file.path, { folder: "avatars" });
+        const result = await cloudinary.uploader.upload(req.file.path, { folder: "meetup/avatars" });
         avatar = result.secure_url;
+        console.log("✅ Avatar uploaded successfully:", avatar);
       } catch (error) {
+        console.log("❌ Cloudinary Upload Error:", error.message);
         return res.status(500).json({ message: "Avatar upload failed", error: error.message });
       }
     }
 
-    // Create new user object
+    // Hash Password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    console.log("📌 Password hashed successfully");
+
+    // Create User
     const newUser = new User({
       name,
       email,
-      password: await bcrypt.hash(password, 10), // Hash password before saving
+      password: hashedPassword,
       avatar,
       about,
       personalDetails,
       role,
     });
 
-    // Save new user in the database
+    // Save user in DB
     await newUser.save();
+    console.log("✅ User saved successfully:", newUser.email);
 
-    // Generate JWT token
+    // Generate Token
     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     res.status(201).json({
@@ -73,10 +85,11 @@ const registerUser = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Error registering user:", err.message);
-    res.status(500).json({ error: "Error registering user." });
+    console.error("❌ Error in registerUser:", err.message);
+    res.status(500).json({ error: "Internal Server Error", details: err.message });
   }
 };
+
 
 // Login user
 const loginUser = async (req, res) => {
