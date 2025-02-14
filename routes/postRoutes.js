@@ -1,71 +1,61 @@
 const express = require("express");
 const router = express.Router();
-const  authenticateUser  = require("../middleware/authenticateuser"); // Import authentication middleware
+const authenticateUser = require("../middleware/authenticateuser"); // Import authentication middleware
 const multer = require("multer");
 const path = require("path");
-const {
-  createPost,
-  getAllPosts,
-  addComment,
-  getComments,
-  toggleLikePost, // This function will handle both like and unlike
-  getPostDetails,
-  updatePost, // Added updatePost controller
-  deletePost, // Added deletePost controller
-} = require("../controllers/postController");
+const cloudinary = require("../utils/cloudinary"); // Import Cloudinary utility
+const { createPost, getAllPosts, addComment, getComments, toggleLikePost, getPostDetails, updatePost, deletePost } = require("../controllers/postController");
 
-// Set up storage engine for multer (image upload handling)
+// Set up multer storage (temporarily stores image before Cloudinary upload)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Folder where images will be stored
+    cb(null, "uploads/"); // Temporary folder
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname));
+  },
 });
 
 // Create multer instance for image upload
 const upload = multer({ storage });
 
 // @route   POST /api/posts
-// @desc    Create a new post
-// @access  Private (requires authentication)
-router.post("/", authenticateUser, upload.single("image"), createPost);
-
-// @route   GET /api/posts
-// @desc    Get all posts
-// @access  Public
-router.get("/", getAllPosts);
-
-// @route   POST /api/posts/:postId/comments
-// @desc    Add a comment to a post
-// @access  Private (requires authentication)
-router.post("/:postId/comments", authenticateUser, addComment);
-
-// @route   GET /api/posts/:postId/comments
-// @desc    Get all comments for a post
-// @access  Public
-router.get("/:postId/comments", getComments);
-
-// @route   POST /api/posts/:postId/like
-// @desc    Like or unlike a post (toggle)
-// @access  Private (requires authentication)
-router.post("/:postId/like", authenticateUser, toggleLikePost); // Use toggleLikePost for both like and unlike
-
-// @route   GET /api/posts/:postId
-// @desc    Get post details (likes & comments)
-// @access  Public
-router.get("/:postId", getPostDetails);
+// @desc    Create a new post with Cloudinary image
+// @access  Private
+router.post("/", authenticateUser, upload.single("image"), async (req, res, next) => {
+  if (req.file) {
+    try {
+      const result = await cloudinary.uploader.upload(req.file.path, { folder: "posts" });
+      req.body.image = result.secure_url; // Store Cloudinary URL
+    } catch (error) {
+      return res.status(500).json({ message: "Image upload failed", error: error.message });
+    }
+  }
+  next();
+}, createPost);
 
 // @route   PUT /api/posts/:postId
-// @desc    Update a post
-// @access  Private (requires authentication)
-router.put("/:postId", authenticateUser, upload.single("image"), updatePost); // Use updatePost to update post
+// @desc    Update a post (handles new image upload)
+// @access  Private
+router.put("/:postId", authenticateUser, upload.single("image"), async (req, res, next) => {
+  if (req.file) {
+    try {
+      const result = await cloudinary.uploader.upload(req.file.path, { folder: "posts" });
+      req.body.image = result.secure_url;
+    } catch (error) {
+      return res.status(500).json({ message: "Image upload failed", error: error.message });
+    }
+  }
+  next();
+}, updatePost);
 
-// @route   DELETE /api/posts/:postId
-// @desc    Delete a post
-// @access  Private (requires authentication)
-router.delete("/:postId", authenticateUser, deletePost); // Use deletePost to delete post
+// Other Routes (No Changes)
+router.get("/", getAllPosts);
+router.post("/:postId/comments", authenticateUser, addComment);
+router.get("/:postId/comments", getComments);
+router.post("/:postId/like", authenticateUser, toggleLikePost);
+router.get("/:postId", getPostDetails);
+router.delete("/:postId", authenticateUser, deletePost);
 
-module.exports = router; 
+module.exports = router;

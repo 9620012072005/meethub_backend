@@ -8,15 +8,18 @@ const Message = require("../models/Chat");
 const router = express.Router();
 
 // Register user
+// Register user with Cloudinary avatar upload
 router.post("/register", upload.single("avatar"), async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    const avatar = req.file ? `/uploads/${req.file.filename}` : "/uploads/default_avatar.jpg";
     
+    // Store Cloudinary URL instead of local path
+    const avatar = req.file ? req.file.path : "https://res.cloudinary.com/your_cloud_name/image/upload/v123456789/default_avatar.png";
+
     const user = new User({
       name,
       email,
-      password, // You would want to hash this before saving
+      password, // You should hash this before saving
       avatar,
     });
 
@@ -26,6 +29,7 @@ router.post("/register", upload.single("avatar"), async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
 
 // Login user
 router.post("/login", async (req, res) => {
@@ -46,12 +50,12 @@ router.get("/profile", protect, async (req, res) => {
 });
 
 // Get all user profiles (with pagination)
+// Get all user profiles (with pagination)
 router.get("/profiles", protect, async (req, res) => {
   const { page, limit } = req.query;
   try {
     const query = User.find({ _id: { $ne: req.user._id } }).select("name avatar _id");
 
-    // Apply pagination only if `page` and `limit` are provided
     if (page && limit) {
       const currentPage = parseInt(page, 10);
       const perPage = parseInt(limit, 10);

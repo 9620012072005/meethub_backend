@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const path = require("path");
 const fs = require("fs");
+const cloudinary = require("../utils/cloudinary"); // Import Cloudinary utility
 
 // Utility function to delete an old avatar file
 const deleteAvatar = (avatarPath) => {
@@ -31,7 +32,15 @@ const registerUser = async (req, res) => {
     }
 
     // Handle avatar file upload
-    let avatar = req.file ? `/uploads/${req.file.filename}` : "/uploads/default_avatar.jpg";
+    let avatar = "/uploads/default_avatar.jpg"; // Default avatar
+    if (req.file) {
+      try {
+        const result = await cloudinary.uploader.upload(req.file.path, { folder: "avatars" });
+        avatar = result.secure_url;
+      } catch (error) {
+        return res.status(500).json({ message: "Avatar upload failed", error: error.message });
+      }
+    }
 
     // Create new user object
     const newUser = new User({
@@ -140,10 +149,14 @@ const updateUserProfile = async (req, res) => {
 
     console.log("Received data:", req.body);
 
-    // Delete old avatar if a new one is uploaded
+    // Upload new avatar to Cloudinary
     if (req.file) {
-      deleteAvatar(user.avatar);
-      user.avatar = `/uploads/${req.file.filename}`;
+      try {
+        const result = await cloudinary.uploader.upload(req.file.path, { folder: "avatars" });
+        user.avatar = result.secure_url;
+      } catch (error) {
+        return res.status(500).json({ message: "Avatar upload failed", error: error.message });
+      }
     }
 
     // Update profile fields
@@ -162,5 +175,4 @@ const updateUserProfile = async (req, res) => {
     res.status(500).json({ error: "Failed to update profile" });
   }
 };
-
 module.exports = { registerUser, loginUser, getUserProfile, updateUserProfile };

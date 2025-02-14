@@ -1,18 +1,31 @@
 const multer = require("multer");
-const path = require("path");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("cloudinary").v2;
+const dotenv = require("dotenv");
 
-// Define storage engine for multer
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Define directory to store uploaded files
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname)); // Ensure unique filenames
+// Load environment variables
+dotenv.config();
+
+// 🔹 Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// 🔹 Set up Cloudinary storage for avatars and posts
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    return {
+      folder: file.fieldname === "avatar" ? "meetup/avatars" : "meetup/posts", // Separate folders for avatars & posts
+      format: "png", // Convert all uploads to PNG
+      public_id: `${Date.now()}-${file.originalname}`,
+    };
   },
 });
 
-// Initialize multer
+// 🔹 Initialize multer with Cloudinary storage
 const upload = multer({ storage });
 
 module.exports = upload;
