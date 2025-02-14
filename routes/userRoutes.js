@@ -4,32 +4,81 @@ const upload = require("../middleware/upload");
 const { protect } = require("../middleware/authMiddleware");
 const User = require("../models/User");
 const Message = require("../models/Chat");
-
+const cloudinary = require("cloudinary").v2;
 const router = express.Router();
 
 // Register user
 // Register user with Cloudinary avatar upload
 router.post("/register", upload.single("avatar"), async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-    
-    // Store Cloudinary URL instead of local path
-    const avatar = req.file ? req.file.path : "https://res.cloudinary.com/your_cloud_name/image/upload/v123456789/default_avatar.png";
+    console.log("📌 Register endpoint hit");
 
-    const user = new User({
+    const { name, email, password } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: "User already exists" });
+    }
+
+    // Validate password
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters long" });
+    }
+
+    // Default avatar URL
+    let avatar = "https://res.cloudinary.com/your_cloud_name/image/upload/v123456789/default_avatar.png";
+
+    // Upload avatar to Cloudinary if provided
+    if (req.file) {
+      try {
+        console.log("📌 Uploading to Cloudinary...");
+        
+        const result = await cloudinary.uploader.upload(req.file.path, { 
+          folder: "meetup/avatars",
+          resource_type: "image", 
+        });
+
+        avatar = result.secure_url; // Store secure Cloudinary URL
+        console.log("✅ Cloudinary Upload Successful:", avatar);
+      } catch (error) {
+        console.error("❌ Cloudinary Upload Error:", error.message);
+        return res.status(500).json({ error: "Avatar upload failed", details: error.message });
+      }
+    }
+
+    // Hash password before saving
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create new user
+    const newUser = new User({
       name,
       email,
-      password, // You should hash this before saving
+      password: hashedPassword,
       avatar,
     });
 
-    await user.save();
-    res.status(201).json(user);
+    await newUser.save();
+    console.log("✅ User registered successfully:", newUser.email);
+
+    // Generate JWT token
+    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+
+    res.status(201).json({
+      success: true,
+      token,
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        avatar: newUser.avatar,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("❌ Error in register route:", error.message);
+    res.status(500).json({ error: "Internal Server Error", details: error.message });
   }
 });
-
 
 // Login user
 router.post("/login", async (req, res) => {

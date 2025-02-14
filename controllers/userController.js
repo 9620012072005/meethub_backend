@@ -39,18 +39,27 @@ const registerUser = async (req, res) => {
     if (req.file) {
       try {
         console.log("📌 Uploading to Cloudinary...");
-        const result = await cloudinary.uploader.upload(req.file.path || req.file.buffer, { 
+        console.log("📌 File received:", req.file);
+    
+        if (!req.file.path && !req.file.buffer) {
+          throw new Error("❌ Multer is not passing the file correctly. Check multer setup.");
+        }
+    
+        const result = await cloudinary.uploader.upload(req.file.path, { 
           folder: "meetup/avatars",
           resource_type: "auto", // Ensure correct file handling
         });
+    
         avatar = result.secure_url;
         console.log("✅ Cloudinary Upload Successful:", avatar);
       } catch (error) {
         console.error("❌ Cloudinary Upload Error:", error.message);
         return res.status(500).json({ error: "Avatar upload failed", details: error.message });
       }
+    } else {
+      console.log("⚠️ No file received for upload.");
     }
-
+    
     // Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
     console.log("📌 Password hashed successfully");
