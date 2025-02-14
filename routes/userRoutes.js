@@ -6,40 +6,45 @@ const User = require("../models/User");
 const Message = require("../models/Chat");
 const cloudinary = require("cloudinary").v2;
 const router = express.Router();
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 // Register user
 // Register user with Cloudinary avatar upload
 router.post("/register", upload.single("avatar"), async (req, res) => {
   try {
     console.log("📌 Register endpoint hit");
+    console.log("📌 Request body:", req.body);
 
     const { name, email, password } = req.body;
 
-    // Check if user already exists
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: "User already exists" });
     }
 
-    // Validate password
-    if (!password || password.length < 6) {
+    if (password.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters long" });
     }
 
-    // Default avatar URL
     let avatar = "https://res.cloudinary.com/your_cloud_name/image/upload/v123456789/default_avatar.png";
 
-    // Upload avatar to Cloudinary if provided
     if (req.file) {
       try {
         console.log("📌 Uploading to Cloudinary...");
-        
-        const result = await cloudinary.uploader.upload(req.file.path, { 
-          folder: "meetup/avatars",
-          resource_type: "image", 
-        });
 
-        avatar = result.secure_url; // Store secure Cloudinary URL
+        const result = await cloudinary.uploader.upload_stream(
+          { folder: "meetup/avatars", resource_type: "image" },
+          (error, result) => {
+            if (error) throw new Error("Cloudinary upload failed");
+            avatar = result.secure_url;
+          }
+        ).end(req.file.buffer);
+
         console.log("✅ Cloudinary Upload Successful:", avatar);
       } catch (error) {
         console.error("❌ Cloudinary Upload Error:", error.message);
@@ -47,21 +52,12 @@ router.post("/register", upload.single("avatar"), async (req, res) => {
       }
     }
 
-    // Hash password before saving
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create new user
-    const newUser = new User({
-      name,
-      email,
-      password: hashedPassword,
-      avatar,
-    });
-
+    const newUser = new User({ name, email, password: hashedPassword, avatar });
     await newUser.save();
     console.log("✅ User registered successfully:", newUser.email);
 
-    // Generate JWT token
     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     res.status(201).json({
