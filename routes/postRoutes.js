@@ -5,7 +5,7 @@ const multer = require("multer");
 const path = require("path");
 const cloudinary = require("../utils/cloudinary"); // Import Cloudinary utility
 const { createPost, getAllPosts, addComment, getComments, toggleLikePost, getPostDetails, updatePost, deletePost } = require("../controllers/postController");
-const cloudinary = require("../utils/cloudinary");
+
 
 // Set up multer storage (temporarily stores image before Cloudinary upload)
 const storage = multer.diskStorage({
