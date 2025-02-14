@@ -14,7 +14,6 @@ const deleteAvatar = (avatarPath) => {
     fs.unlinkSync(filePath);
   }
 };
-
 const registerUser = async (req, res) => {
   try {
     console.log("📌 Register endpoint hit");
@@ -30,23 +29,27 @@ const registerUser = async (req, res) => {
     }
 
     // Validate password complexity
-    if (password.length < 6) {
+    if (!password || password.length < 6) {
       console.log("❌ Password too short");
       return res.status(400).json({ error: "Password must be at least 6 characters long." });
     }
 
     // Handle avatar file upload
-let avatar = "https://res.cloudinary.com/demo/image/upload/v1597323178/default_avatar.jpg"; // Default avatar
-if (req.file) {
-  try {
-    const result = await cloudinary.uploader.upload(req.file.path, { folder: "avatars" });
-    avatar = result.secure_url;
-  } catch (error) {
-    console.error("Cloudinary Upload Error:", error.message);
-    // Don't break registration, just log error
-  }
-}
-
+    let avatar = "https://res.cloudinary.com/demo/image/upload/v1597323178/default_avatar.jpg"; // Default avatar
+    if (req.file) {
+      try {
+        console.log("📌 Uploading to Cloudinary...");
+        const result = await cloudinary.uploader.upload(req.file.path || req.file.buffer, { 
+          folder: "meetup/avatars",
+          resource_type: "auto", // Ensure correct file handling
+        });
+        avatar = result.secure_url;
+        console.log("✅ Cloudinary Upload Successful:", avatar);
+      } catch (error) {
+        console.error("❌ Cloudinary Upload Error:", error.message);
+        return res.status(500).json({ error: "Avatar upload failed", details: error.message });
+      }
+    }
 
     // Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -66,6 +69,12 @@ if (req.file) {
     // Save user in DB
     await newUser.save();
     console.log("✅ User saved successfully:", newUser.email);
+
+    // Check JWT_SECRET before signing the token
+    if (!process.env.JWT_SECRET) {
+      console.warn("⚠️ Warning: JWT_SECRET is not set in environment variables.");
+      return res.status(500).json({ error: "Server misconfiguration. Contact support." });
+    }
 
     // Generate Token
     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
@@ -88,7 +97,6 @@ if (req.file) {
     res.status(500).json({ error: "Internal Server Error", details: err.message });
   }
 };
-
 
 // Login user
 const loginUser = async (req, res) => {
