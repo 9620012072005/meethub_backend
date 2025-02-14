@@ -29,8 +29,9 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (req, file) => {
     try {
-      console.log("📌 Uploading file:", file.originalname, "Type:", file.mimetype);
-      
+     
+      console.log("📌 Uploading file:", file?.originalname || "Unknown", "Type:", file?.mimetype || "Unknown");
+
       return {
         folder: file.fieldname === "avatar" ? "meethub/avatars" : "meethub/posts", // Corrected folder names
         format: file.mimetype.split("/")[1] || "png", // Use the uploaded file format or default to png
@@ -55,6 +56,8 @@ const upload = multer({
       return cb(new Error("Invalid file type. Allowed types: JPG, JPEG, PNG, GIF, WebP, SVG."));
     }
     console.log("✅ File accepted:", file.originalname);
+    console.log("🛠️ Uploaded file details:", req.file);
+
     cb(null, true);
   },
 });
