@@ -35,19 +35,18 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ error: "Password must be at least 6 characters long." });
     }
 
-    // Handle avatar upload (Debugging)
-    let avatar = "https://res.cloudinary.com/your_cloud_name/image/upload/v123456789/default_avatar.png"; // Default avatar
-    if (req.file) {
-      console.log("📌 Uploading file to Cloudinary:", req.file.path);
-      try {
-        const result = await cloudinary.uploader.upload(req.file.path, { folder: "meetup/avatars" });
-        avatar = result.secure_url;
-        console.log("✅ Avatar uploaded successfully:", avatar);
-      } catch (error) {
-        console.log("❌ Cloudinary Upload Error:", error.message);
-        return res.status(500).json({ message: "Avatar upload failed", error: error.message });
-      }
-    }
+    // Handle avatar file upload
+let avatar = "https://res.cloudinary.com/demo/image/upload/v1597323178/default_avatar.jpg"; // Default avatar
+if (req.file) {
+  try {
+    const result = await cloudinary.uploader.upload(req.file.path, { folder: "avatars" });
+    avatar = result.secure_url;
+  } catch (error) {
+    console.error("Cloudinary Upload Error:", error.message);
+    // Don't break registration, just log error
+  }
+}
+
 
     // Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
