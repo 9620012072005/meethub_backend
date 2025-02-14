@@ -18,14 +18,25 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (req, file) => {
     return {
-      folder: file.fieldname === "avatar" ? "meetup/avatars" : "meetup/posts", // Separate folders for avatars & posts
-      format: "png", // Convert all uploads to PNG
-      public_id: `${Date.now()}-${file.originalname}`,
+      folder: file.fieldname === "avatar" ? "meetup/avatars" : "meetup/posts", // Separate folders
+      format: file.mimetype.split("/")[1] || "png", // Use the uploaded file format or default to png
+      public_id: `${Date.now()}-${file.originalname.replace(/\s+/g, "-")}`, // Remove spaces in filename
+      transformation: [{ width: 500, height: 500, crop: "limit" }], // Optional: Resize images
     };
   },
 });
 
 // 🔹 Initialize multer with Cloudinary storage
-const upload = multer({ storage });
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 🔹 Limit file size to 5MB
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+    if (!allowedTypes.includes(file.mimetype)) {
+      return cb(new Error("Invalid file type. Only JPG, JPEG, and PNG are allowed."));
+    }
+    cb(null, true);
+  }
+});
 
 module.exports = upload;
