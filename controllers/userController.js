@@ -40,16 +40,12 @@ const registerUser = async (req, res) => {
       try {
         console.log("📌 Uploading to Cloudinary...");
         console.log("📌 File received:", req.file);
-    
-        if (!req.file.path && !req.file.buffer) {
-          throw new Error("❌ Multer is not passing the file correctly. Check multer setup.");
-        }
-    
-        const result = await cloudinary.uploader.upload(req.file.path, { 
+
+        const result = await cloudinary.uploader.upload(req.file.path, {
           folder: "meetup/avatars",
-          resource_type: "auto", // Ensure correct file handling
+          resource_type: "auto",
         });
-    
+
         avatar = result.secure_url;
         console.log("✅ Cloudinary Upload Successful:", avatar);
       } catch (error) {
@@ -59,7 +55,7 @@ const registerUser = async (req, res) => {
     } else {
       console.log("⚠️ No file received for upload.");
     }
-    
+
     // Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
     console.log("📌 Password hashed successfully");
@@ -79,7 +75,6 @@ const registerUser = async (req, res) => {
     await newUser.save();
     console.log("✅ User saved successfully:", newUser.email);
 
-    // Check JWT_SECRET before signing the token
     if (!process.env.JWT_SECRET) {
       console.warn("⚠️ Warning: JWT_SECRET is not set in environment variables.");
       return res.status(500).json({ error: "Server misconfiguration. Contact support." });
