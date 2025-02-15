@@ -132,6 +132,9 @@ const loginUser = async (req, res) => {
 
     // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
+console.log("🔍 Comparing passwords:", password, "vs", user.password);
+console.log("🔍 Password match result:", isMatch);
+
 
     if (!isMatch) {
       console.log("Login failed: Incorrect password for", email);
