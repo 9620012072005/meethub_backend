@@ -106,24 +106,42 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
+  // Debugging log
+  console.log("Login attempt:", { email });
+
   try {
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
     // Find user by email
     const user = await User.findOne({ email });
 
     // If user does not exist
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      console.log("Login failed: User not found");
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Check if the password matches
+    // Check if the password exists in the database
+    if (!user.password) {
+      console.log("Login failed: Password field missing for user", email);
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      console.log("Login failed: Incorrect password for", email);
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
     // Generate JWT Token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+
+    console.log("Login successful:", email);
 
     res.status(200).json({
       message: "Login successful",
@@ -140,9 +158,12 @@ const loginUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Login Error:", error);
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+
 
 // Get user profile
 const getUserProfile = async (req, res) => {
