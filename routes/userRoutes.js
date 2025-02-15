@@ -14,13 +14,8 @@ const jwt = require("jsonwebtoken");
 router.post("/register", upload.single("avatar"), registerUser);
 
 // Login user
-router.post("/login", async (req, res) => {
-  try {
-    await loginUser(req, res);
-  } catch (err) {
-    res.status(400).json({ message: "Login failed", error: err.message });
-  }
-});
+router.post("/login", loginUser);
+
 
 // Get user profile (authenticated route)
 router.get("/profile", protect, async (req, res) => {
