@@ -35,7 +35,8 @@ const registerUser = async (req, res) => {
     }
 
     // Handle avatar file upload
-    let avatar = "https://res.cloudinary.com/demo/image/upload/v1597323178/default_avatar.jpg"; // Default avatar
+    let avatar = "https://res.cloudinary.com/demo/image/upload/v1597323178/default_avatar.jpg";
+// Default avatar
     if (req.file) {
       try {
         console.log("📌 Uploading to Cloudinary...");
@@ -117,7 +118,6 @@ const loginUser = async (req, res) => {
     }
 
     email = email.trim();
-    password = password.trim();
 
     // Find user by email
     const user = await User.findOne({ email });
@@ -134,8 +134,8 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Debugging: Log the entered password and stored hash
-    console.log("🔍 Comparing passwords:", password, "vs", user.password);
+    // Debugging: Log stored hash
+    console.log("🔍 Stored Hashed Password:", user.password);
 
     // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
