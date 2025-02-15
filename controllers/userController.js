@@ -59,6 +59,7 @@ const registerUser = async (req, res) => {
 
     // Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
+
     console.log("📌 Password hashed:", hashedPassword);
     
     // Create User
@@ -103,11 +104,9 @@ const registerUser = async (req, res) => {
   }
 };
 
-// Login user
 const loginUser = async (req, res) => {
   let { email, password } = req.body;
 
-  // Debugging log
   console.log("📌 Login attempt:", { email });
 
   try {
@@ -117,18 +116,16 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    email = email.trim();
+    email = email.trim(); // Trim after checking it's provided
 
     // Find user by email
     const user = await User.findOne({ email });
 
-    // If user does not exist
     if (!user) {
       console.log("❌ Login failed: User not found", email);
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Ensure password field exists
     if (!user.password) {
       console.log("❌ Login failed: Password field missing for user", email);
       return res.status(401).json({ message: "Invalid email or password" });
@@ -146,12 +143,12 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Generate JWT Token
     if (!process.env.JWT_SECRET) {
       console.warn("⚠️ Warning: JWT_SECRET is not set in environment variables.");
       return res.status(500).json({ message: "Server misconfiguration. Contact support." });
     }
 
+    // Generate JWT Token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     console.log("✅ Login successful:", email);
@@ -174,7 +171,6 @@ const loginUser = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 
 // Get user profile
 const getUserProfile = async (req, res) => {
