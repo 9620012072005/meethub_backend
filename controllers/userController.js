@@ -58,8 +58,8 @@ const registerUser = async (req, res) => {
 
     // Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
-    console.log("📌 Password hashed successfully");
-
+    console.log("📌 Password hashed:", hashedPassword);
+    
     // Create User
     const newUser = new User({
       name,
@@ -104,47 +104,57 @@ const registerUser = async (req, res) => {
 
 // Login user
 const loginUser = async (req, res) => {
-  const { email, password } = req.body;
+  let { email, password } = req.body;
 
   // Debugging log
-  console.log("Login attempt:", { email });
+  console.log("📌 Login attempt:", { email });
 
   try {
     // Validate input
     if (!email || !password) {
+      console.log("❌ Email or password missing");
       return res.status(400).json({ message: "Email and password are required" });
     }
+
+    email = email.trim();
+    password = password.trim();
 
     // Find user by email
     const user = await User.findOne({ email });
 
     // If user does not exist
     if (!user) {
-      console.log("Login failed: User not found");
+      console.log("❌ Login failed: User not found", email);
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Check if the password exists in the database
+    // Ensure password field exists
     if (!user.password) {
-      console.log("Login failed: Password field missing for user", email);
+      console.log("❌ Login failed: Password field missing for user", email);
       return res.status(401).json({ message: "Invalid email or password" });
     }
+
+    // Debugging: Log the entered password and stored hash
+    console.log("🔍 Comparing passwords:", password, "vs", user.password);
 
     // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
-console.log("🔍 Comparing passwords:", password, "vs", user.password);
-console.log("🔍 Password match result:", isMatch);
-
+    console.log("🔍 Password match result:", isMatch);
 
     if (!isMatch) {
-      console.log("Login failed: Incorrect password for", email);
+      console.log("❌ Login failed: Incorrect password for", email);
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
     // Generate JWT Token
+    if (!process.env.JWT_SECRET) {
+      console.warn("⚠️ Warning: JWT_SECRET is not set in environment variables.");
+      return res.status(500).json({ message: "Server misconfiguration. Contact support." });
+    }
+
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
-    console.log("Login successful:", email);
+    console.log("✅ Login successful:", email);
 
     res.status(200).json({
       message: "Login successful",
@@ -160,12 +170,10 @@ console.log("🔍 Password match result:", isMatch);
       },
     });
   } catch (error) {
-    console.error("Login Error:", error);
+    console.error("❌ Login Error:", error.message);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-
 
 
 // Get user profile
