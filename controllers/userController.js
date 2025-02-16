@@ -57,7 +57,8 @@ const registerUser = async (req, res) => {
 
     // Hash Password
     console.log("📌 Hashing password...");
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password.trim(), 10);
+
     console.log("✅ Password hashed successfully");
 
     const newUser = new User({
@@ -129,7 +130,8 @@ const loginUser = async (req, res) => {
     console.log("🔍 Entered Password:", password);
 
     // Ensure password comparison is correct
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password.trim(), user.password);
+
     console.log("🔍 Password match result:", isMatch);
 
     if (!isMatch) {
