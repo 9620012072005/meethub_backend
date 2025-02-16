@@ -21,22 +21,20 @@ const registerUser = async (req, res) => {
     const { name, email, password, about, personalDetails, role } = req.body;
     console.log("📌 Received Data:", req.body);
 
-    // Check if user already exists
     const userExists = await User.findOne({ email });
+
     if (userExists) {
       console.log("❌ User already exists:", email);
       return res.status(400).json({ error: "User already exists." });
     }
 
-    // Validate password complexity
     if (!password || password.length < 6) {
       console.log("❌ Password too short");
       return res.status(400).json({ error: "Password must be at least 6 characters long." });
     }
 
-    // Handle avatar file upload
     let avatar = "https://res.cloudinary.com/demo/image/upload/v1597323178/default_avatar.jpg";
-// Default avatar
+
     if (req.file) {
       try {
         console.log("📌 Uploading to Cloudinary...");
@@ -58,22 +56,20 @@ const registerUser = async (req, res) => {
     }
 
     // Hash Password
+    console.log("📌 Hashing password...");
     const hashedPassword = await bcrypt.hash(password, 10);
+    console.log("✅ Password hashed successfully");
 
-    console.log("📌 Password hashed:", hashedPassword);
-    
-    // Create User
     const newUser = new User({
       name,
       email,
-      password: hashedPassword,
+      password: hashedPassword,  // Ensure password is hashed before saving
       avatar,
       about,
       personalDetails,
       role,
     });
 
-    // Save user in DB
     await newUser.save();
     console.log("✅ User saved successfully:", newUser.email);
 
@@ -82,7 +78,6 @@ const registerUser = async (req, res) => {
       return res.status(500).json({ error: "Server misconfiguration. Contact support." });
     }
 
-    // Generate Token
     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     res.status(201).json({
@@ -104,21 +99,20 @@ const registerUser = async (req, res) => {
   }
 };
 
+
 const loginUser = async (req, res) => {
   let { email, password } = req.body;
 
   console.log("📌 Login attempt:", { email });
 
   try {
-    // Validate input
     if (!email || !password) {
       console.log("❌ Email or password missing");
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    email = email.trim(); // Trim after checking it's provided
+    email = email.trim();
 
-    // Find user by email
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -131,10 +125,10 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Debugging: Log stored hash
     console.log("🔍 Stored Hashed Password:", user.password);
+    console.log("🔍 Entered Password:", password);
 
-    // Compare passwords
+    // Ensure password comparison is correct
     const isMatch = await bcrypt.compare(password, user.password);
     console.log("🔍 Password match result:", isMatch);
 
@@ -148,7 +142,6 @@ const loginUser = async (req, res) => {
       return res.status(500).json({ message: "Server misconfiguration. Contact support." });
     }
 
-    // Generate JWT Token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     console.log("✅ Login successful:", email);
@@ -171,6 +164,7 @@ const loginUser = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 // Get user profile
 const getUserProfile = async (req, res) => {
