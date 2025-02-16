@@ -14,23 +14,29 @@ const deleteAvatar = (avatarPath) => {
     fs.unlinkSync(filePath);
   }
 };
+// ✅ Register User
 const registerUser = async (req, res) => {
   try {
     console.log("📌 Register endpoint hit");
 
-    const { name, email, password, about, personalDetails, role } = req.body;
-    console.log("📌 Received Data:", req.body);
+    let { name, email, password, about, personalDetails, role } = req.body;
+    email = email.trim();
+    password = password.trim();
+
+    console.log("📌 Received Data:", { name, email });
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required." });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters long." });
+    }
 
     const userExists = await User.findOne({ email });
 
     if (userExists) {
-      console.log("❌ User already exists:", email);
       return res.status(400).json({ error: "User already exists." });
-    }
-
-    if (!password || password.length < 6) {
-      console.log("❌ Password too short");
-      return res.status(400).json({ error: "Password must be at least 6 characters long." });
     }
 
     let avatar = "https://res.cloudinary.com/demo/image/upload/v1597323178/default_avatar.jpg";
@@ -38,33 +44,25 @@ const registerUser = async (req, res) => {
     if (req.file) {
       try {
         console.log("📌 Uploading to Cloudinary...");
-        console.log("📌 File received:", req.file);
-
         const result = await cloudinary.uploader.upload(req.file.path, {
           folder: "meetup/avatars",
           resource_type: "auto",
         });
-
         avatar = result.secure_url;
-        console.log("✅ Cloudinary Upload Successful:", avatar);
       } catch (error) {
-        console.error("❌ Cloudinary Upload Error:", error.message);
         return res.status(500).json({ error: "Avatar upload failed", details: error.message });
       }
-    } else {
-      console.log("⚠️ No file received for upload.");
     }
 
-    // Hash Password
+    // ✅ Correct hashing
     console.log("📌 Hashing password...");
-    const hashedPassword = await bcrypt.hash(password.trim(), 10);
-
-    console.log("✅ Password hashed successfully");
+    const hashedPassword = await bcrypt.hash(password, 10);
+    console.log("✅ Hashed Password:", hashedPassword);
 
     const newUser = new User({
       name,
       email,
-      password: hashedPassword,  // Ensure password is hashed before saving
+      password: hashedPassword, // ✅ Store hashed password directly
       avatar,
       about,
       personalDetails,
@@ -75,7 +73,6 @@ const registerUser = async (req, res) => {
     console.log("✅ User saved successfully:", newUser.email);
 
     if (!process.env.JWT_SECRET) {
-      console.warn("⚠️ Warning: JWT_SECRET is not set in environment variables.");
       return res.status(500).json({ error: "Server misconfiguration. Contact support." });
     }
 
@@ -100,47 +97,39 @@ const registerUser = async (req, res) => {
   }
 };
 
-
+// ✅ Login User
 const loginUser = async (req, res) => {
   let { email, password } = req.body;
 
-  console.log("📌 Login attempt:", { email });
-
   try {
+    console.log("📌 Login attempt:", { email });
+
     if (!email || !password) {
-      console.log("❌ Email or password missing");
       return res.status(400).json({ message: "Email and password are required" });
     }
 
     email = email.trim();
+    password = password.trim();
 
     const user = await User.findOne({ email });
 
     if (!user) {
-      console.log("❌ Login failed: User not found", email);
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
-
-    if (!user.password) {
-      console.log("❌ Login failed: Password field missing for user", email);
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
     console.log("🔍 Stored Hashed Password:", user.password);
     console.log("🔍 Entered Password:", password);
 
-    // Ensure password comparison is correct
-    const isMatch = await bcrypt.compare(password.trim(), user.password);
+    // ✅ Fix password comparison
+    const isMatch = await bcrypt.compare(password, user.password);
 
     console.log("🔍 Password match result:", isMatch);
 
     if (!isMatch) {
-      console.log("❌ Login failed: Incorrect password for", email);
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
     if (!process.env.JWT_SECRET) {
-      console.warn("⚠️ Warning: JWT_SECRET is not set in environment variables.");
       return res.status(500).json({ message: "Server misconfiguration. Contact support." });
     }
 
