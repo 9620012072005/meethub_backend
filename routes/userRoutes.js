@@ -9,31 +9,76 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// Register user
-// Register user with Cloudinary avatar upload
-router.post("/register", upload.single("avatar"), registerUser);
+// 📌 Register user (with Cloudinary avatar upload)
+router.post("/register", upload.single("avatar"), async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    console.log("📌 Registering User:", email);
 
-// Login user
+    // Check if user already exists
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    // Hash password before saving
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    console.log("✅ Hashed Password (Before Saving):", hashedPassword);
+
+    const user = new User({
+      name,
+      email,
+      password: hashedPassword, // Store the hashed password
+      avatar: req.file ? req.file.path : null,
+    });
+
+    await user.save();
+
+    console.log("🎉 User Registered Successfully:", user.email);
+    res.status(201).json({ message: "User registered successfully", user });
+  } catch (error) {
+    console.error("❌ Error Registering User:", error);
+    res.status(500).json({ message: "Registration failed", error: error.message });
+  }
+});
+
+// 📌 Login user
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   console.log("📌 Login attempt for:", email);
 
   try {
     const user = await User.findOne({ email });
+
     if (!user) {
       console.log("❌ User not found in database");
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
     console.log("✅ User found:", user.email);
-    
+    console.log("🔑 Stored Hashed Password:", user.password);
+    console.log("🔑 Entered Password:", password);
+
+    if (!user.password) {
+      console.log("⚠️ Password field is missing in DB record!");
+      return res.status(401).json({ error: "Password not set. Try resetting your password." });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
+
     if (!isMatch) {
       console.log("❌ Password does not match!");
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
     console.log("✅ Password matches! Generating token...");
+
+    if (!process.env.JWT_SECRET) {
+      console.log("⚠️ JWT_SECRET is missing in environment variables!");
+      return res.status(500).json({ error: "Server configuration error." });
+    }
+
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
     res.json({ token, user });
@@ -42,8 +87,6 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-
-
 // Get user profile (authenticated route)
 router.get("/profile", protect, async (req, res) => {
   try {

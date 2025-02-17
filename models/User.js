@@ -13,59 +13,58 @@ const UserSchema = new mongoose.Schema(
       unique: true, // Ensures email is unique
       trim: true, // Trims leading/trailing whitespaces
       lowercase: true, // Converts email to lowercase before saving
-      match: [/\S+@\S+\.\S+/, "Please enter a valid email address"], // Validates the email format
+      match: [/\S+@\S+\.\S+/, "Please enter a valid email address"], // Validates email format
     },
     password: {
       type: String,
       required: [true, "Password is required"], // Password is required
       minlength: [6, "Password must be at least 6 characters long"], // Password must be at least 6 characters
       match: [
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/, // Password regex updated for readability
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/, // Strong password validation
         "Password must include at least one uppercase letter, one number, and one special character.",
-      ], // Password must include at least one uppercase letter, one number, and one special character
+      ],
     },
     avatar: {
       type: String,
       default: null,
-
     },
-    
-    
-    
     image: {
       type: String,
       default: null,
     },
-        
   },
   {
     timestamps: true, // Automatically adds 'createdAt' and 'updatedAt' fields
   }
-  
 );
 
 // Middleware to hash the password before saving
 UserSchema.pre("save", async function (next) {
-  // Only hash password if it is being modified or is new
   if (!this.isModified("password")) {
-    return next(); // If password is not modified, skip hashing
+    return next();
   }
 
   try {
+    console.log("📌 Before Hashing:", this.password); // Debug log
+
     const salt = await bcrypt.genSalt(10); // Generate a salt with 10 rounds
-    this.password = await bcrypt.hash(this.password, salt); // Hash the password with the salt
-    next(); // Proceed with the save operation
+    this.password = await bcrypt.hash(this.password, salt); // Hash the password
+
+    console.log("✅ Hashed Password:", this.password); // Debug log
+    next();
   } catch (error) {
-    next(error); // Pass the error to the next middleware
+    console.error("❌ Error Hashing Password:", error);
+    next(error);
   }
 });
 
-// Method to compare entered password with the hashed password
+// Method to compare entered password with hashed password
 UserSchema.methods.matchPassword = async function (enteredPassword) {
+  console.log("📌 Comparing:", enteredPassword, "with", this.password); // Debug log
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Mongoose model export
+// Export Mongoose model
 const User = mongoose.model("User", UserSchema);
 
 module.exports = User;
