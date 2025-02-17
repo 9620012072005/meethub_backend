@@ -35,7 +35,7 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ error: "Password must be at least 6 characters long." });
     }
 
-    // Handle avatar file upload
+    // Handle avatar file upload (Cloudinary)
     let avatar = "https://res.cloudinary.com/demo/image/upload/v1597323178/default_avatar.jpg"; // Default avatar
     if (req.file) {
       try {
@@ -57,15 +57,15 @@ const registerUser = async (req, res) => {
       console.log("⚠️ No file received for upload.");
     }
 
-    // Hash Password
+    // Hash Password (use bcrypt.hash)
     const hashedPassword = await bcrypt.hash(password, 10);
-    console.log("📌 Password hashed successfully");
+    console.log("✅ Hashed Password:", hashedPassword); // Ensure this is the correct hashed password
 
-    // Create User
+    // Create User with hashed password
     const newUser = new User({
       name,
       email,
-      password: hashedPassword,
+      password: hashedPassword,  // Save the hashed password here
       avatar,
       about,
       personalDetails,
@@ -81,7 +81,7 @@ const registerUser = async (req, res) => {
       return res.status(500).json({ error: "Server misconfiguration. Contact support." });
     }
 
-    // Generate Token
+    // Generate JWT Token
     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     res.status(201).json({
@@ -102,6 +102,7 @@ const registerUser = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error", details: err.message });
   }
 };
+
 
 
 // Login User
