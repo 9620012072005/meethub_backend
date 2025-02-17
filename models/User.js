@@ -40,7 +40,8 @@ const UserSchema = new mongoose.Schema(
 
 // Middleware to hash the password before saving
 UserSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) {
+  if (!this.isModified("password") || this.password.startsWith("$2a$")) {
+    // Skip if the password is not modified or it already looks like a hashed password
     return next();
   }
 
