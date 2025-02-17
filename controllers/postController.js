@@ -2,28 +2,13 @@ const Post = require("../models/Post");
 const mongoose = require("mongoose");
 const multer = require("multer");
 const path = require("path");
+const cloudinary = require("../utils/cloudinary"); // Import Cloudinary utility
 
-// Set up storage engine for multer
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Folder where images will be stored
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
 
-// Create multer instance
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
-
-// Helper function for error handling
-const handleServerError = (res, error, message = "Server error") => {
-  console.error(message, error);
-  res.status(500).json({ message, error: error.message });
-};
-
-// Create a new post with or without an image
+exports.uploadMiddleware = upload.single("image");
+// Create a new post with Cloudinary image upload
 exports.createPost = async (req, res) => {
   const { content } = req.body;
 
@@ -35,14 +20,29 @@ exports.createPost = async (req, res) => {
     let imageUrl = null;
 
     if (req.file) {
-      // Ensure that the image URL has a leading slash before "uploads"
-      imageUrl = `/uploads/${req.file.filename.replace(/\\/g, "/")}`; // Add "/" before "uploads"
+      try {
+        const result = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: "posts" },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          uploadStream.end(req.file.buffer);
+        });
+
+        imageUrl = result.secure_url; // ✅ Store Cloudinary image URL
+      } catch (error) {
+        return res.status(500).json({ message: "Image upload failed", error: error.message });
+      }
     }
 
+    // ✅ Create new post
     const newPost = new Post({
       user: req.user._id,
       content: content.trim(),
-      image: imageUrl, // Store the image path with a leading "/"
+      image: imageUrl, // Store Cloudinary image URL (or null if no image)
     });
 
     const savedPost = await newPost.save();
@@ -129,39 +129,38 @@ exports.getPostDetails = async (req, res) => {
 
   try {
     const post = await Post.findById(postId)
-      .populate("user", "avatar")
-      .populate("comments.user", "avatar")
-      .populate("likes", "name");
+      .populate("user", "name avatar") // Fetch user name and avatar
+      .populate("comments.user", "name avatar") // Fetch comment user details
+      .populate("likes", "name"); // Fetch users who liked the post
 
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
-
     res.status(200).json({
       post: {
         user: {
-          avatar: post.user?.avatar ? `${baseUrl}${post.user.avatar}` : null, // Correct URL with / prefix
+          name: post.user?.name || "Unknown", // Ensure user name is available
+          avatar: post.user?.avatar || null, // Avatar from Cloudinary, no need to prefix
         },
-        likes: post.likes.map((like) => like.name),
+        content: post.content,
+        image: post.image || null, // Cloudinary image URL
+        likes: post.likes.map((like) => like.name), // List of user names who liked the post
         comments: post.comments.map((comment) => ({
           user: {
-            avatar: comment.user?.avatar ? `${baseUrl}${comment.user.avatar}` : null, // Correct URL with / prefix
+            name: comment.user?.name || "Unknown",
+            avatar: comment.user?.avatar || null, // Avatar from Cloudinary
           },
           text: comment.comment,
         })),
-        image: post.image ? `${baseUrl}${post.image}` : null, // Correct URL with / prefix
+        createdAt: post.createdAt,
       },
     });
   } catch (error) {
-    handleServerError(res, error, "Error fetching post details");
+    console.error("Error fetching post details:", error);
+    res.status(500).json({ message: "Error fetching post details" });
   }
 };
-
-
-
-
 
 
 
