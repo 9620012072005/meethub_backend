@@ -18,36 +18,50 @@ const deleteAvatar = (avatarPath) => {
 const registerUser = async (req, res) => {
   try {
     console.log("📌 Register endpoint hit");
-    const { name, email, password, about, personalDetails, role } = req.body;
-    
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: "Name, email, and password are required." });
-    }
 
+    const { name, email, password, about, personalDetails, role } = req.body;
+    console.log("📌 Received Data:", req.body);
+
+    // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
+      console.log("❌ User already exists:", email);
       return res.status(400).json({ error: "User already exists." });
     }
 
-    if (password.length < 6) {
+    // Validate password complexity
+    if (!password || password.length < 6) {
+      console.log("❌ Password too short");
       return res.status(400).json({ error: "Password must be at least 6 characters long." });
     }
 
-    let avatar = "https://res.cloudinary.com/demo/image/upload/v1597323178/default_avatar.jpg";
-
+    // Handle avatar file upload
+    let avatar = "https://res.cloudinary.com/demo/image/upload/v1597323178/default_avatar.jpg"; // Default avatar
     if (req.file) {
       try {
+        console.log("📌 Uploading to Cloudinary...");
+        console.log("📌 File received:", req.file);
+
         const result = await cloudinary.uploader.upload(req.file.path, {
           folder: "meetup/avatars",
           resource_type: "auto",
         });
+
         avatar = result.secure_url;
+        console.log("✅ Cloudinary Upload Successful:", avatar);
       } catch (error) {
+        console.error("❌ Cloudinary Upload Error:", error.message);
         return res.status(500).json({ error: "Avatar upload failed", details: error.message });
       }
+    } else {
+      console.log("⚠️ No file received for upload.");
     }
 
-    const hashedPassword = await bcrypt.hash(password.trim(), 10);
+    // Hash Password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    console.log("📌 Password hashed successfully");
+
+    // Create User
     const newUser = new User({
       name,
       email,
@@ -58,12 +72,16 @@ const registerUser = async (req, res) => {
       role,
     });
 
+    // Save user in DB
     await newUser.save();
+    console.log("✅ User saved successfully:", newUser.email);
 
     if (!process.env.JWT_SECRET) {
+      console.warn("⚠️ Warning: JWT_SECRET is not set in environment variables.");
       return res.status(500).json({ error: "Server misconfiguration. Contact support." });
     }
 
+    // Generate Token
     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     res.status(201).json({
@@ -80,9 +98,11 @@ const registerUser = async (req, res) => {
       },
     });
   } catch (err) {
+    console.error("❌ Error in registerUser:", err.message);
     res.status(500).json({ error: "Internal Server Error", details: err.message });
   }
 };
+
 
 // Login User
 const loginUser = async (req, res) => {
