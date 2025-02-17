@@ -14,7 +14,34 @@ const jwt = require("jsonwebtoken");
 router.post("/register", upload.single("avatar"), registerUser);
 
 // Login user
-router.post("/login", loginUser);
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  console.log("📌 Login attempt for:", email);
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      console.log("❌ User not found in database");
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+
+    console.log("✅ User found:", user.email);
+    
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      console.log("❌ Password does not match!");
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+
+    console.log("✅ Password matches! Generating token...");
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+
+    res.json({ token, user });
+  } catch (error) {
+    console.error("🔥 Server error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 
 // Get user profile (authenticated route)
