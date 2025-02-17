@@ -51,9 +51,12 @@ const getAllProfileDetails = async (req, res) => {
   try {
     // Fetch all profile details and populate the user's name and avatar
     const profiles = await ProfileDetails.find()
-   
-    .populate('user', 'name avatar') // Populate 'name' and 'avatar' from the User model
-    .exec();
+      .populate({
+        path: "user",
+        select: "name avatar",
+        model: User, // Ensure that User model is referenced correctly
+      })
+      .lean(); // Use lean() for better performance if you don't need Mongoose documents
 
     if (!profiles || profiles.length === 0) {
       return res.status(404).json({ message: "No profiles found." });
@@ -65,7 +68,6 @@ const getAllProfileDetails = async (req, res) => {
     return res.status(500).json({ message: "Server error, please try again later." });
   }
 };
-
 
 
 const updateProfileDetails = async (req, res) => {
