@@ -14,36 +14,29 @@ const deleteAvatar = (avatarPath) => {
     fs.unlinkSync(filePath);
   }
 };
-// ✅ Register User
+// Register User
 const registerUser = async (req, res) => {
   try {
     console.log("📌 Register endpoint hit");
+    const { name, email, password, about, personalDetails, role } = req.body;
+    
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Name, email, and password are required." });
+    }
 
-    let { name, email, password, about, personalDetails, role } = req.body;
-    email = email.trim();
-    password = password.trim();
-
-    console.log("📌 Received Data:", { name, email });
-
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required." });
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({ error: "User already exists." });
     }
 
     if (password.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters long." });
     }
 
-    const userExists = await User.findOne({ email });
-
-    if (userExists) {
-      return res.status(400).json({ error: "User already exists." });
-    }
-
     let avatar = "https://res.cloudinary.com/demo/image/upload/v1597323178/default_avatar.jpg";
 
     if (req.file) {
       try {
-        console.log("📌 Uploading to Cloudinary...");
         const result = await cloudinary.uploader.upload(req.file.path, {
           folder: "meetup/avatars",
           resource_type: "auto",
@@ -54,15 +47,11 @@ const registerUser = async (req, res) => {
       }
     }
 
-    // ✅ Correct hashing
-    console.log("📌 Hashing password...");
-    const hashedPassword = await bcrypt.hash(password, 10);
-    console.log("✅ Hashed Password:", hashedPassword);
-
+    const hashedPassword = await bcrypt.hash(password.trim(), 10);
     const newUser = new User({
       name,
       email,
-      password: hashedPassword, // ✅ Store hashed password directly
+      password: hashedPassword,
       avatar,
       about,
       personalDetails,
@@ -70,7 +59,6 @@ const registerUser = async (req, res) => {
     });
 
     await newUser.save();
-    console.log("✅ User saved successfully:", newUser.email);
 
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({ error: "Server misconfiguration. Contact support." });
@@ -92,53 +80,37 @@ const registerUser = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("❌ Error in registerUser:", err.message);
     res.status(500).json({ error: "Internal Server Error", details: err.message });
   }
 };
 
-// ✅ Login User
+// Login User
 const loginUser = async (req, res) => {
-  let { email, password } = req.body;
-
   try {
-    console.log("📌 Login attempt:", { email });
-
+    const { email, password } = req.body;
+    
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+      return res.status(400).json({ error: "Email and password are required" });
     }
 
-    email = email.trim();
-    password = password.trim();
-
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(401).json({ message: "Invalid email or password" });
+    const user = await User.findOne({ email: email.trim() });
+    if (!user || !user.password) {
+      return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    console.log("🔍 Stored Hashed Password:", user.password);
-    console.log("🔍 Entered Password:", password);
-
-    // ✅ Fix password comparison
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    console.log("🔍 Password match result:", isMatch);
-
+    const isMatch = await bcrypt.compare(password.trim(), user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ error: "Invalid email or password" });
     }
 
     if (!process.env.JWT_SECRET) {
-      return res.status(500).json({ message: "Server misconfiguration. Contact support." });
+      return res.status(500).json({ error: "Server misconfiguration. Contact support." });
     }
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
-    console.log("✅ Login successful:", email);
-
     res.status(200).json({
-      message: "Login successful",
+      success: true,
       token,
       user: {
         id: user._id,
@@ -151,8 +123,7 @@ const loginUser = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("❌ Login Error:", error.message);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({ error: "Server error", details: error.message });
   }
 };
 
