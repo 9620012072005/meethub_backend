@@ -41,10 +41,8 @@ const sendMessage = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-socket.on("send_message", (data) => {
-  io.to(data.roomId).emit("send_message", data);  // Send message to the specific room
-});
 
+// 📩 Controller to Get Messages Between Two Users
 const getMessages = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -89,6 +87,7 @@ const getMessages = async (req, res) => {
       senderAvatarUrl: getAvatarUrl(msg.sender?.avatar || ""),
       receiverAvatarUrl: getAvatarUrl(msg.receiver?.avatar || ""),
     }));
+    
 
     res.status(200).json({ messages: formattedMessages });
   } catch (error) {
@@ -96,14 +95,5 @@ const getMessages = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
-// Socket.io event to send a message to the right room (receiver)
-const socketHandler = (io, socket) => {
-  socket.on("send_message", (data) => {
-    console.log("Socket received message:", data);
-    io.to(data.roomId).emit("send_message", data);  // Send message to the specific room
-  });
-};
-
 
 module.exports = { sendMessage, getMessages };
