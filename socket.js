@@ -1,22 +1,44 @@
 const Notification = require('./models/Notification');
-const io = require('socket.io')(server);
+const Chat = require('./models/Chat'); // Assuming you have a Chat model
+const io = require('socket.io')(server, {
+  cors: {
+    origin: "https://meethub-frontend.onrender.com", // Update with your frontend URL
+    methods: ["GET", "POST"],
+  },
+});
 
 io.on("connection", (socket) => {
-  console.log("A user connected");
+  console.log("🔥 A user connected:", socket.id);
 
-  // User joins a specific room (their userId) to receive messages and notifications
-  socket.on('join', (userId) => {
-    socket.join(userId); // Join the socket to the user's specific room
-    console.log(`User ${userId} joined their room`);
+  // User joins their specific room using userId
+  socket.on("join", (userId) => {
+    socket.join(userId);
+    console.log(`✅ User ${userId} joined their room`);
   });
 
   // When a message is sent
   socket.on("send_message", async (data) => {
     const { receiverId, senderId, messageContent } = data;
+    const timestamp = new Date();
+
+    // Send the message instantly to receiver **before** saving it in the database
+    io.to(receiverId).emit("new_message", {
+      senderId,
+      receiverId,
+      messageContent,
+      timestamp,
+    });
+
+    io.to(senderId).emit("message_sent_confirmation", {
+      senderId,
+      receiverId,
+      messageContent,
+      timestamp,
+    });
 
     try {
-      // Save the message to your chat model here
-      // Example: await Chat.create({ senderId, receiverId, messageContent });
+      // Save the message asynchronously (doesn't block the real-time update)
+      await Chat.create({ senderId, receiverId, messageContent, timestamp });
 
       // Create or update notification for the receiver
       const notification = await Notification.findOneAndUpdate(
@@ -25,47 +47,33 @@ io.on("connection", (socket) => {
         { upsert: true, new: true }
       );
 
-      // Emit the message to the receiver
-      io.to(receiverId).emit("new_message", {
-        senderId,
-        receiverId,
-        messageContent,
-      });
-
       // Emit the new notification to the receiver
       io.to(receiverId).emit("new_notification", {
         senderId,
         messageCount: notification.messageCount,
       });
 
-      // Optionally emit a confirmation to the sender
-      io.to(senderId).emit("message_sent_confirmation", {
-        senderId,
-        receiverId,
-        messageContent,
-      });
-
     } catch (err) {
-      console.error("Error while sending message or updating notification:", err);
+      console.error("❌ Error while saving message or updating notification:", err);
     }
   });
 
   // When a user marks notifications as read
   socket.on("mark_notifications_as_read", async (userId) => {
     try {
-      // Mark all unread notifications as read for the user
-      await Notification.updateMany({ receiverId: userId, isRead: false }, { $set: { isRead: true } });
-      
-      // Emit a confirmation that notifications have been read
-      socket.emit("notifications_read", userId);
+      await Notification.updateMany(
+        { receiverId: userId, isRead: false },
+        { $set: { isRead: true } }
+      );
 
+      socket.emit("notifications_read", userId);
     } catch (err) {
-      console.error("Error marking notifications as read:", err);
+      console.error("❌ Error marking notifications as read:", err);
     }
   });
 
-  // Disconnect the socket when the user disconnects
+  // Handle user disconnection
   socket.on("disconnect", () => {
-    console.log("A user disconnected");
+    console.log("❌ A user disconnected:", socket.id);
   });
 });
