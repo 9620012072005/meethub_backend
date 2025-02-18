@@ -4,6 +4,12 @@ const io = require('socket.io')(server);
 io.on("connection", (socket) => {
   console.log("A user connected");
 
+  // User joins a specific room (their userId) to receive messages and notifications
+  socket.on('join', (userId) => {
+    socket.join(userId); // Join the socket to the user's specific room
+    console.log(`User ${userId} joined their room`);
+  });
+
   // When a message is sent
   socket.on("send_message", async (data) => {
     const { receiverId, senderId, messageContent } = data;
@@ -32,6 +38,13 @@ io.on("connection", (socket) => {
         messageCount: notification.messageCount,
       });
 
+      // Optionally emit a confirmation to the sender
+      io.to(senderId).emit("message_sent_confirmation", {
+        senderId,
+        receiverId,
+        messageContent,
+      });
+
     } catch (err) {
       console.error("Error while sending message or updating notification:", err);
     }
@@ -49,12 +62,6 @@ io.on("connection", (socket) => {
     } catch (err) {
       console.error("Error marking notifications as read:", err);
     }
-  });
-
-  // User joins a specific room (their userId) to receive messages and notifications
-  socket.on('join', (userId) => {
-    socket.join(userId); // Join the socket to the user's specific room
-    console.log(`User ${userId} joined their room`);
   });
 
   // Disconnect the socket when the user disconnects
