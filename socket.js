@@ -21,33 +21,29 @@ io.on("connection", (socket) => {
     const { receiverId, senderId, messageContent } = data;
     const timestamp = new Date();
 
-    // Send the message instantly to receiver **before** saving it in the database
-    io.to(receiverId).emit("new_message", {
+    const messageData = {
       senderId,
       receiverId,
       messageContent,
       timestamp,
-    });
+    };
 
-    io.to(senderId).emit("message_sent_confirmation", {
-      senderId,
-      receiverId,
-      messageContent,
-      timestamp,
-    });
+    // ✅ Emit instantly to both sender and receiver
+    io.to(receiverId).emit("new_message", messageData);
+    io.to(senderId).emit("message_sent_confirmation", messageData);
 
     try {
-      // Save the message asynchronously (doesn't block the real-time update)
-      await Chat.create({ senderId, receiverId, messageContent, timestamp });
+      // ✅ Save the message asynchronously
+      await Chat.create(messageData);
 
-      // Create or update notification for the receiver
+      // ✅ Create or update notification for the receiver
       const notification = await Notification.findOneAndUpdate(
         { receiverId },
         { $inc: { messageCount: 1 }, isRead: false },
         { upsert: true, new: true }
       );
 
-      // Emit the new notification to the receiver
+      // ✅ Emit notification update to receiver
       io.to(receiverId).emit("new_notification", {
         senderId,
         messageCount: notification.messageCount,
